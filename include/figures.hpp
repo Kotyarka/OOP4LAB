@@ -8,12 +8,47 @@
 #include <memory>
 #include <stdexcept>
 #include <vector>
+#include <concepts>
 
+template <typename T>
+concept Number = std::floating_point<T> || std::integral<T>;
+
+template<Number T>
+class Point {
+public:
+    T x, y;
+    
+    Point();
+    Point(T x, T y);
+    
+    Point(const Point& other);
+    
+    Point& operator=(const Point& other);
+    
+    Point operator+(const Point& other) const;
+    Point operator-(const Point& other) const;
+    Point operator*(T scalar) const;
+    Point operator/(T scalar) const;
+    
+
+    bool operator==(const Point& other) const;
+    bool operator!=(const Point& other) const;
+    
+    double distance(const Point& other) const;
+    
+    template<Number U>
+    friend std::ostream& operator<<(std::ostream& os, const Point<U>& p) {
+        os << "(" << p.x << ", " << p.y << ")";
+        return os;
+    }
+};
+
+template<Number T>
 class Figure {
 public:
     virtual ~Figure() = default;
     
-    virtual std::pair<double, double> geometricCenter() const = 0;
+    virtual Point<double> geometricCenter() const = 0;
     virtual double area() const = 0;
     virtual void printVertices(std::ostream& os) const = 0;
     virtual void readVertices(std::istream& is) = 0;
@@ -21,94 +56,120 @@ public:
     virtual bool operator==(const Figure& other) const = 0;
     virtual Figure& operator=(const Figure& other) = 0;
     
-    virtual std::unique_ptr<Figure> clone() const = 0;
+    virtual std::shared_ptr<Figure<T>> clone() const = 0;  
     
-    operator double() const;
+    virtual bool isRegular() const = 0; 
+    
+    operator double() const {
+        return area();
+    }
 };
 
-class Triangle : public Figure {
+template<Number T>
+class Triangle : public Figure<T> {
 private:
-    std::array<std::pair<double, double>, 3> vertices;
+    std::array<std::shared_ptr<Point<T>>, 3> vertices; 
     
 public:
     Triangle();
-    Triangle(const std::array<std::pair<double, double>, 3>& points);
-    
-    std::pair<double, double> geometricCenter() const override;
-    double area() const override;
-    void printVertices(std::ostream& os) const override;
-    void readVertices(std::istream& is) override;
-    
-    bool operator==(const Figure& other) const override;
-    Triangle& operator=(const Figure& other) override;
-    
+    Triangle(const std::array<Point<T>, 3>& points);
     Triangle(const Triangle& other);
     Triangle& operator=(const Triangle& other);
     Triangle(Triangle&& other) noexcept;
     Triangle& operator=(Triangle&& other) noexcept;
     
-    std::unique_ptr<Figure> clone() const override;
-    
-    const std::array<std::pair<double, double>, 3>& getVertices() const { return vertices; }
-};
-
-class Square : public Figure {
-private:
-    std::array<std::pair<double, double>, 4> vertices;
-    
-public:
-    Square();
-    Square(const std::array<std::pair<double, double>, 4>& points);
-    
-    std::pair<double, double> geometricCenter() const override;
+    Point<double> geometricCenter() const override;
     double area() const override;
     void printVertices(std::ostream& os) const override;
     void readVertices(std::istream& is) override;
     
-    bool operator==(const Figure& other) const override;
-    Square& operator=(const Figure& other) override;
+    bool operator==(const Figure<T>& other) const override;
+    Triangle& operator=(const Figure<T>& other) override;
     
-    Square(const Square& other);
-    Square& operator=(const Square& other);
-    Square(Square&& other) noexcept;
-    Square& operator=(Square&& other) noexcept;
+    std::shared_ptr<Figure<T>> clone() const override;  
     
-    std::unique_ptr<Figure> clone() const override;
+    bool isRegular() const override;
     
-    const std::array<std::pair<double, double>, 4>& getVertices() const { return vertices; }
+    const std::array<std::shared_ptr<Point<T>>, 3>& getVertices() const { return vertices; } 
 };
 
-class Rectangle : public Figure {
+template<Number T>
+class Hexagon : public Figure<T> {
 private:
-    std::array<std::pair<double, double>, 4> vertices;
+    Point<T> center;
+    T radius;
+    
+    std::array<Point<T>, 6> calculateVertices() const;
     
 public:
-    Rectangle();
-    Rectangle(const std::array<std::pair<double, double>, 4>& points);
+    Hexagon();
+    Hexagon(const Point<T>& center, T radius);
+    Hexagon(const Hexagon& other);
+    Hexagon& operator=(const Hexagon& other);
     
-    std::pair<double, double> geometricCenter() const override;
+    Point<double> geometricCenter() const override;
     double area() const override;
     void printVertices(std::ostream& os) const override;
     void readVertices(std::istream& is) override;
     
-    bool operator==(const Figure& other) const override;
-    Rectangle& operator=(const Figure& other) override;
+    bool operator==(const Figure<T>& other) const override;
+    Hexagon& operator=(const Figure<T>& other) override;
     
-    Rectangle(const Rectangle& other);
-    Rectangle& operator=(const Rectangle& other);
-    Rectangle(Rectangle&& other) noexcept;
-    Rectangle& operator=(Rectangle&& other) noexcept;
+    std::shared_ptr<Figure<T>> clone() const override;
     
-    std::unique_ptr<Figure> clone() const override;
+    bool isRegular() const override; 
     
-    const std::array<std::pair<double, double>, 4>& getVertices() const { return vertices; }
+    const Point<T>& getCenter() const { return center; }
+    T getRadius() const { return radius; }
 };
 
-std::ostream& operator<<(std::ostream& os, const Figure& figure);
-std::istream& operator>>(std::istream& is, Figure& figure);
+template<Number T>
+class Octagon : public Figure<T> {
+private:
+    Point<T> center;
+    T radius;
+    
+    std::array<Point<T>, 8> calculateVertices() const;
+    
+public:
+    Octagon();
+    Octagon(const Point<T>& center, T radius);
+    Octagon(const Octagon& other);
+    Octagon& operator=(const Octagon& other);
+    
+    Point<double> geometricCenter() const override;
+    double area() const override;
+    void printVertices(std::ostream& os) const override;
+    void readVertices(std::istream& is) override;
+    
+    bool operator==(const Figure<T>& other) const override;
+    Octagon& operator=(const Figure<T>& other) override;
+    
+    std::shared_ptr<Figure<T>> clone() const override; 
+    
+    bool isRegular() const override; 
+    
+    const Point<T>& getCenter() const { return center; }
+    T getRadius() const { return radius; }
+};
 
-double calculateTotalArea(const std::vector<Figure*>& figures);
-void printAllFiguresInfo(const std::vector<Figure*>& figures);
-void removeFigureByIndex(std::vector<Figure*>& figures, size_t index);
+template <class T>
+class Array {
+private:
+    std::vector<std::shared_ptr<T>> data;  
+public:
+    void add(std::shared_ptr<T> elem); 
+    void remove(size_t index);
+    double totalArea() const;
+    void printAll() const;
+    size_t size() const;
+    std::shared_ptr<T>& get(size_t index);  
+};
+
+template<Number T>
+std::ostream& operator<<(std::ostream& os, const Figure<T>& figure);
+
+template<Number T>
+std::istream& operator>>(std::istream& is, Figure<T>& figure);
 
 #endif
